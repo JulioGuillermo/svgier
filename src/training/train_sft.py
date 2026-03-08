@@ -6,12 +6,48 @@ import argparse
 from pathlib import Path
 from typing import Any
 
+import torch
 from datasets import Dataset
 from transformers import DataCollatorForLanguageModeling, Trainer, TrainingArguments
 
 from src.training.config import AdapterConfig, DataConfig, RunConfig, TrainConfig
 from src.training.data import JsonlDatasetLoader, PromptFormatter
 from src.training.modeling import ModelBuilder, TokenizerBuilder
+
+
+class DeviceChecker:
+    """Detects runtime device and validates precision settings."""
+
+    @staticmethod
+    def detect_device() -> str:
+        if torch.cuda.is_available():
+            return "cuda"
+        xpu_backend = getattr(torch, "xpu", None)
+        if xpu_backend is not None and xpu_backend.is_available():
+            return "xpu"
+        if torch.backends.mps.is_available():
+            return "mps"
+        return "cpu"
+
+    @staticmethod
+    def validate_precision(device: str, run: RunConfig) -> None:
+        if run.bf16 and run.fp16:
+            raise ValueError("Only one precision mode can be enabled: bf16 or fp16.")
+
+        if run.fp16 and device in {"cpu", "mps"}:
+            raise ValueError(
+                f"fp16 is not supported for device '{device}' in this project setup."
+            )
+
+        if run.bf16 and device == "cpu":
+            raise ValueError("bf16 is not supported on CPU for this training setup.")
+
+        if run.bf16 and device == "cuda":
+            is_bf16_supported = getattr(torch.cuda, "is_bf16_supported", None)
+            if callable(is_bf16_supported) and not is_bf16_supported():
+                raise ValueError(
+                    "bf16 was requested, but this CUDA device does not support bf16."
+                )
 
 
 class TokenizationPipeline:
@@ -40,12 +76,19 @@ class TrainingOrchestrator:
         self.config: TrainConfig = config
         self.formatter: PromptFormatter = PromptFormatter()
         self.dataset_loader: JsonlDatasetLoader = JsonlDatasetLoader()
+        self.device: str = DeviceChecker.detect_device()
+        DeviceChecker.validate_precision(device=self.device, run=self.config.run)
+        print(
+            f"[train] detected_device={self.device} bf16={self.config.run.bf16} fp16={self.config.run.fp16}"
+        )
 
     def _load_datasets(self) -> tuple[Dataset, Dataset]:
         train_rows = self.dataset_loader.load_jsonl(self.config.data.train_jsonl)
         val_rows = self.dataset_loader.load_jsonl(self.config.data.val_jsonl)
 
-        train_ds: Dataset = self.dataset_loader.to_text_dataset(train_rows, self.formatter)
+        train_ds: Dataset = self.dataset_loader.to_text_dataset(
+            train_rows, self.formatter
+        )
         val_ds: Dataset = self.dataset_loader.to_text_dataset(val_rows, self.formatter)
         return train_ds, val_ds
 
@@ -126,11 +169,23 @@ class ConfigFactory:
 
     @staticmethod
     def parse_args() -> argparse.Namespace:
-        parser = argparse.ArgumentParser(description="Train Qwen3.5-0.8B with LoRA on bootstrap dataset")
+        parser = argparse.ArgumentParser(
+            description="Train Qwen3.5-0.8B with LoRA on bootstrap dataset"
+        )
         parser.add_argument("--model-name", type=str, default="Qwen/Qwen3.5-0.8B")
-        parser.add_argument("--train-jsonl", type=Path, default=Path("data/processed/bootstrap_train.jsonl"))
-        parser.add_argument("--val-jsonl", type=Path, default=Path("data/processed/bootstrap_val.jsonl"))
-        parser.add_argument("--output-dir", type=Path, default=Path("checkpoints/qwen35_0_8b_lora_bootstrap"))
+        parser.add_argument(
+            "--train-jsonl",
+            type=Path,
+            default=Path("data/processed/bootstrap_train.jsonl"),
+        )
+        parser.add_argument(
+            "--val-jsonl", type=Path, default=Path("data/processed/bootstrap_val.jsonl")
+        )
+        parser.add_argument(
+            "--output-dir",
+            type=Path,
+            default=Path("checkpoints/qwen35_0_8b_lora_bootstrap"),
+        )
         parser.add_argument("--max-length", type=int, default=1024)
         parser.add_argument("--learning-rate", type=float, default=2e-4)
         parser.add_argument("--train-batch-size", type=int, default=2)
