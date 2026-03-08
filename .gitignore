@@ -1,0 +1,42 @@
+# Python environment
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets
+.env
+.env.*
+*.key
+
+# Data and generated artifacts (do not version large datasets)
+data/raw/
+data/processed/
+data/metadata/
+
+# Model and training artifacts
+checkpoints/
+outputs/
+artifacts/
+logs/
+wandb/
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+
+# Hugging Face cache
+.cache/huggingface/
