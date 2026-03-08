@@ -19,6 +19,8 @@ from transformers import (
     TextIteratorStreamer,
 )
 
+from src.common.prompting import PromptFormatter
+
 
 @dataclass
 class GenerateConfig:
@@ -181,9 +183,14 @@ class SvgGenerator:
         self.device: str = DeviceResolver.detect()
         self.dtype: torch.dtype = DeviceResolver.dtype_for_device(self.device)
         self.checkpoint_resolver: CheckpointResolver = CheckpointResolver()
+        self.prompt_formatter: PromptFormatter = PromptFormatter()
 
     def _build_inputs(self, tokenizer):
-        encoded = tokenizer(self.config.prompt, return_tensors="pt")
+        prompt_text: str = self.prompt_formatter.format_sample(
+            prompt=self.config.prompt,
+            svg="",
+        )
+        encoded = tokenizer(prompt_text, return_tensors="pt")
         return {k: v.to(self.device) for k, v in encoded.items()}
 
     @staticmethod
