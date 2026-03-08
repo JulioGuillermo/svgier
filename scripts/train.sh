@@ -12,10 +12,16 @@ EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-1}"
 GRAD_ACCUM="${GRAD_ACCUM:-4}"
 EPOCHS="${EPOCHS:-1}"
 PRECISION="${PRECISION:-bf16}"
+RESUME_CHECKPOINT="${RESUME_CHECKPOINT:-}"
 
 PRECISION_FLAG="--bf16"
 if [[ "${PRECISION}" == "fp16" ]]; then
   PRECISION_FLAG="--fp16"
+fi
+
+RESUME_ARGS=()
+if [[ -n "${RESUME_CHECKPOINT}" ]]; then
+  RESUME_ARGS=(--resume-checkpoint "${RESUME_CHECKPOINT}")
 fi
 
 uv run python -m src.training.train_sft \
@@ -29,4 +35,5 @@ uv run python -m src.training.train_sft \
   --eval-batch-size "${EVAL_BATCH_SIZE}" \
   --grad-accum "${GRAD_ACCUM}" \
   --epochs "${EPOCHS}" \
+  "${RESUME_ARGS[@]}" \
   ${PRECISION_FLAG}

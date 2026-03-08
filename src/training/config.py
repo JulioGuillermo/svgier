@@ -53,6 +53,7 @@ class RunConfig:
     fp16: bool = False
     seed: int = 42
     gradient_checkpointing: bool = True
+    resume_checkpoint: Path | None = None
 
 
 @dataclass

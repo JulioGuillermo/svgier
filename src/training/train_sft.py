@@ -159,7 +159,10 @@ class TrainingOrchestrator:
             processing_class=token_pipeline.tokenizer,
         )
 
-        trainer.train()
+        if self.config.run.resume_checkpoint is not None:
+            trainer.train(resume_from_checkpoint=str(self.config.run.resume_checkpoint))
+        else:
+            trainer.train()
         trainer.save_model()
         token_pipeline.tokenizer.save_pretrained(str(self.config.run.output_dir))
 
@@ -192,6 +195,7 @@ class ConfigFactory:
         parser.add_argument("--eval-batch-size", type=int, default=2)
         parser.add_argument("--grad-accum", type=int, default=8)
         parser.add_argument("--epochs", type=int, default=2)
+        parser.add_argument("--resume-checkpoint", type=Path, default=None)
         parser.add_argument("--bf16", action="store_true")
         parser.add_argument("--fp16", action="store_true")
         return parser.parse_args()
@@ -209,6 +213,7 @@ class ConfigFactory:
             per_device_eval_batch_size=args.eval_batch_size,
             gradient_accumulation_steps=args.grad_accum,
             num_train_epochs=args.epochs,
+            resume_checkpoint=args.resume_checkpoint,
             bf16=args.bf16,
             fp16=args.fp16,
         )
