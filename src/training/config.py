@@ -18,8 +18,8 @@ class DataConfig:
 class AdapterConfig:
     """LoRA adapter settings."""
 
-    r: int = 16
-    alpha: int = 32
+    r: int = 400
+    alpha: int = 800
     dropout: float = 0.05
     target_modules: tuple[str, ...] = (
         "q_proj",
