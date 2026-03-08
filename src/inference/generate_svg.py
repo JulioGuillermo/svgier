@@ -163,7 +163,7 @@ class SvgStopCriteria(StoppingCriteria):
 class SvgOutputExtractor:
     """Extracts only the first valid SVG block from generated text."""
 
-    _pattern = re.compile(r"(<svg\\b[^>]*>.*?</svg>)", flags=re.IGNORECASE | re.DOTALL)
+    _pattern = re.compile(r"(<svg\b[^>]*>.*?</svg>)", flags=re.IGNORECASE | re.DOTALL)
 
     @classmethod
     def extract(cls, text: str) -> str:
